@@ -1,0 +1,5 @@
+kernel/
+clang/
+AnyKernel3/
+out/
+*.zip

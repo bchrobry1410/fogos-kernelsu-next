@@ -1,0 +1,83 @@
+name: Build fogos kernel with KernelSU Next
+
+on:
+  workflow_dispatch:
+    inputs:
+      kernel_branch:
+        description: 'Base kernel branch from Motorola-SM6375-Devs (sixteen = 5.4.302)'
+        required: true
+        default: 'sixteen'
+        type: choice
+        options:
+          - sixteen
+          - fifteen
+          - fourteen
+      ksu_tag:
+        description: 'KernelSU Next release tag (legacy tags target non-GKI 5.4)'
+        required: true
+        default: 'v3.4.0-legacy'
+        type: choice
+        options:
+          - v3.4.0-legacy
+          - v3.2.0-legacy
+          - v3.4.2
+      ksu_hook:
+        description: 'KernelSU hook mode'
+        required: true
+        default: 'syscall-table'
+        type: choice
+        options:
+          - syscall-table
+          - manual
+      enable_susfs:
+        description: 'Inject SuSFS 5.4 patches (experimental)'
+        required: false
+        default: false
+        type: boolean
+
+jobs:
+  build:
+    name: Build KernelSU Next for fogos
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout integration repo
+        uses: actions/checkout@v4
+
+      - name: Free disk space
+        uses: easimon/maximize-build-space@master
+        with:
+          root-reserve-mb: 8192
+          temp-reserve-mb: 2048
+          remove-dotnet: 'true'
+          remove-android: 'true'
+          remove-haskell: 'true'
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            bc bison ca-certificates ccache flex gcc \
+            gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
+            git libelf-dev libssl-dev lld make python3 tar unzip zip zlib1g-dev
+
+      - name: Download AOSP Clang
+        run: |
+          mkdir -p clang
+          curl -LSs "https://kali.download/nethunter-images/toolchains/clang-r487747c.tar.gz" \
+            | tar -xz -C clang --strip-components=1
+
+      - name: Integrate KernelSU Next and build
+        env:
+          BASE_BRANCH: ${{ github.event.inputs.kernel_branch }}
+          KSU_TAG: ${{ github.event.inputs.ksu_tag }}
+          KSU_HOOK: ${{ github.event.inputs.ksu_hook }}
+          ENABLE_SUSFS: ${{ github.event.inputs.enable_susfs }}
+          OUTPUT_ZIP: fogos-KernelSU-Next.zip
+        run: bash scripts/integrate_and_build.sh
+
+      - name: Upload flashable kernel
+        uses: actions/upload-artifact@v4
+        with:
+          name: fogos-KernelSU-Next
+          path: fogos-KernelSU-Next.zip
+          retention-days: 14
