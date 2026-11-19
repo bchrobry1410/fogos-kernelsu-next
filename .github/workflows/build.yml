@@ -22,17 +22,18 @@ on:
           - v3.2.0-legacy
           - v3.4.2
       ksu_hook:
-        description: 'KernelSU hook mode'
+        description: 'KernelSU hook mode (kprobe = official non-GKI guide)'
         required: true
-        default: 'syscall-table'
+        default: 'kprobe'
         type: choice
         options:
+          - kprobe
           - syscall-table
           - manual
       enable_susfs:
-        description: 'Inject SuSFS 5.4 patches (experimental)'
+        description: 'Inject SuSFS 5.4 patches'
         required: false
-        default: false
+        default: true
         type: boolean
 
 jobs:

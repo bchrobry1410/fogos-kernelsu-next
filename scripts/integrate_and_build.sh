@@ -10,11 +10,11 @@ set -euo pipefail
 BASE_REPO="${BASE_REPO:-Motorola-SM6375-Devs/android_kernel_motorola_sm6375}"
 BASE_BRANCH="${BASE_BRANCH:-sixteen}"          # sixteen == 5.4.302
 KSU_TAG="${KSU_TAG:-v3.4.0-legacy}"            # legacy tags target non-GKI 5.4
-KSU_HOOK="${KSU_HOOK:-syscall-table}"          # syscall-table | manual
+KSU_HOOK="${KSU_HOOK:-kprobe}"                 # kprobe | syscall-table | manual
 KERNEL_DIR="${KERNEL_DIR:-kernel}"
 CLANG_DIR="${CLANG_DIR:-clang}"
 OUTPUT_ZIP="${OUTPUT_ZIP:-fogos-KernelSU-Next.zip}"
-ENABLE_SUSFS="${ENABLE_SUSFS:-false}"
+ENABLE_SUSFS="${ENABLE_SUSFS:-true}"
 
 log() { printf '\n[ksu-fogos] %s\n' "$*"; }
 die() { printf '\n[ksu-fogos] ERROR: %s\n' "$*" >&2; exit 1; }
@@ -35,9 +35,10 @@ cd "${KERNEL_DIR}"
 # ---------------------------------------------------------------------------
 # 2. Inject official KernelSU Next
 # ---------------------------------------------------------------------------
-log "Injecting KernelSU Next ${KSU_TAG}"
+log "Injecting KernelSU Next ${KSU_TAG} (official non-GKI setup.sh)"
+# Command from https://kernelsu-next.github.io/webpage/pages/installation.html
 curl -LSs \
-    "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/${KSU_TAG}/kernel/setup.sh" \
+    "https://raw.githubusercontent.com/KernelSU-Next/KernelSU-Next/next/kernel/setup.sh" \
     | bash -s "${KSU_TAG}"
 
 [ -d drivers/kernelsu ] || die "KernelSU driver was not installed at drivers/kernelsu"
@@ -49,6 +50,15 @@ find -L drivers/kernelsu -type f \( -name '*.c' -o -name '*.h' \) -print0 \
     | xargs -0 sed -i \
         -e 's|#include <linux/pgtable.h>|#include <asm/pgtable.h>|g' \
         -e 's/strncpy_from_user_nofault(\([^,]*\),\([^,]*\),\([^)]*\))/strncpy_from_user(\1, \2, \3)/g'
+
+# This 5.4.302 tree already backported copy_to_kernel_nofault() in mm/maccess.c.
+# The legacy driver's <5.8 compatibility macro expands inside the uaccess.h
+# declaration and breaks compilation, so drop the macro.
+PATCH_MEMORY="drivers/kernelsu/hook/patch_memory.c"
+if [ -f "${PATCH_MEMORY}" ] && grep -q '^#define copy_to_kernel_nofault' "${PATCH_MEMORY}"; then
+    sed -i '/^#define copy_to_kernel_nofault/,+1d' "${PATCH_MEMORY}"
+    log "Removed obsolete copy_to_kernel_nofault compatibility macro"
+fi
 
 # Optional SuSFS (kept off by default; enable only if you have the matching manager).
 if [ "${ENABLE_SUSFS}" = "true" ]; then
@@ -86,11 +96,21 @@ sed -i '/^# >>> KernelSU Next >>>$/,/^# <<< KernelSU Next <<<$/{d}' "${DEFCONFIG
 cat >> "${DEFCONFIG_PATH}" <<EOF
 # >>> KernelSU Next >>>
 CONFIG_KSU=y
+# Official non-GKI (kprobe) recipe from the KernelSU Next integration guide.
 CONFIG_KPROBES=y
+CONFIG_KPROBE_EVENTS=y
+CONFIG_KRETPROBES=y
 CONFIG_EXT4_FS=y
 EOF
 
 case "${KSU_HOOK}" in
+    kprobe)
+        # The guide says CONFIG_KSU_KPROBE_HOOKS, but the driver's Kconfig
+        # symbol is CONFIG_KSU_KPROBES_HOOK (legacy branch / v3.4.0-legacy).
+        cat >> "${DEFCONFIG_PATH}" <<'EOF'
+CONFIG_KSU_KPROBES_HOOK=y
+EOF
+        ;;
     syscall-table)
         cat >> "${DEFCONFIG_PATH}" <<'EOF'
 CONFIG_KSU_SYSCALL_TABLE_HOOK=y
@@ -144,6 +164,7 @@ BUILD_ARGS=(
     CROSS_COMPILE=aarch64-linux-gnu-
     CROSS_COMPILE_ARM32=arm-linux-gnueabi-
     CLANG_TRIPLE=aarch64-linux-gnu-
+    KCFLAGS=-Wno-error
 )
 
 log "Generating defconfig"

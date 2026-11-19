@@ -12,9 +12,11 @@ port by shipu07.
    driver using its own `setup.sh`, pinned to a **legacy** tag suitable for
    non-GKI 5.4 kernels (`v3.4.0-legacy` by default).
 3. Applies 5.4 compatibility fixes (`<asm/pgtable.h>`, `strncpy_from_user`).
-4. Enables `CONFIG_KSU=y` with syscall-table hooking (no manual kernel source
-   hooks required) plus the defconfig options used by the VoltageOS port.
-5. Builds with AOSP Clang and packages an AnyKernel3 flashable zip.
+4. Enables `CONFIG_KSU=y` with the official non-GKI kprobe recipe
+   (`CONFIG_KPROBES`, `CONFIG_KPROBE_EVENTS`, `CONFIG_KRETPROBES`,
+   `CONFIG_KSU_KPROBES_HOOK`) plus the defconfig options used by the VoltageOS port.
+5. Injects SuSFS 5.4 patches when the `enable_susfs` parameter is on.
+6. Builds with AOSP Clang and packages an AnyKernel3 flashable zip.
 
 ## Using it
 
@@ -25,8 +27,8 @@ kernel with KernelSU Next → Run workflow**. Inputs:
 | --- | --- | --- |
 | `kernel_branch` | `sixteen` | `sixteen` = 5.4.302 (matches the stock `5.4.302-moto-g...` build) |
 | `ksu_tag` | `v3.4.0-legacy` | Legacy tags are for non-GKI/5.4; `v3.4.2` is the current GKI-oriented release |
-| `ksu_hook` | `syscall-table` | Works on ARM64 5.4 without source patches; `manual` needs hook patches |
-| `enable_susfs` | `false` | Optional SuSFS 5.4 patches |
+| `ksu_hook` | `kprobe` | Official non-GKI guide method; alternatives: `syscall-table`, `manual` |
+| `enable_susfs` | `true` | SuSFS 5.4 kernel-side patches from `susfs4ksu` `kernel-5.4` branch |
 
 The flashable zip is uploaded as a workflow artifact named
 `fogos-KernelSU-Next`.
