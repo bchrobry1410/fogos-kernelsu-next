@@ -60,7 +60,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             bc bison ca-certificates ccache flex gcc \
             gcc-aarch64-linux-gnu gcc-arm-linux-gnueabi \
-            git libelf-dev libssl-dev lld make python3 tar unzip zip zlib1g-dev
+            git libelf-dev libssl-dev lld llvm make python3 tar unzip zip zlib1g-dev
 
       - name: Download AOSP Clang
         run: |
