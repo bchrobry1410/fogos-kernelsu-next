@@ -33,7 +33,7 @@ on:
       enable_susfs:
         description: 'Inject SuSFS 5.4 patches'
         required: false
-        default: true
+        default: false
         type: boolean
 
 jobs:

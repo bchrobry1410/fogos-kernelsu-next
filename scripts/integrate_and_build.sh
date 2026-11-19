@@ -14,7 +14,7 @@ KSU_HOOK="${KSU_HOOK:-kprobe}"                 # kprobe | syscall-table | manual
 KERNEL_DIR="${KERNEL_DIR:-kernel}"
 CLANG_DIR="${CLANG_DIR:-clang}"
 OUTPUT_ZIP="${OUTPUT_ZIP:-fogos-KernelSU-Next.zip}"
-ENABLE_SUSFS="${ENABLE_SUSFS:-true}"
+ENABLE_SUSFS="${ENABLE_SUSFS:-false}"
 
 log() { printf '\n[ksu-fogos] %s\n' "$*"; }
 die() { printf '\n[ksu-fogos] ERROR: %s\n' "$*" >&2; exit 1; }
