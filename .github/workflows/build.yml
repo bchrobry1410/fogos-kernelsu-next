@@ -40,9 +40,8 @@ jobs:
     name: Build KernelSU Next for fogos
     runs-on: ubuntu-latest
     steps:
-      - name: Checkout integration repo
-        uses: actions/checkout@v4
-
+      # Must run before checkout: this action mounts a clean volume over the
+      # workspace path, which would delete an already checked-out repository.
       - name: Free disk space
         uses: easimon/maximize-build-space@master
         with:
@@ -51,6 +50,9 @@ jobs:
           remove-dotnet: 'true'
           remove-android: 'true'
           remove-haskell: 'true'
+
+      - name: Checkout integration repo
+        uses: actions/checkout@v4
 
       - name: Install build dependencies
         run: |
